@@ -3,14 +3,14 @@
 namespace Vector {
     class Vec2D {
     public:
-        float x = 0;
-        float y = 0;
+        float x = 0f;
+        float y = 0f;
     };
 
     class Vec3D {
     public:
-        float x = 0;
-        float y = 0;
-        float z = 0;
+        float x = 0f;
+        float y = 0f;
+        float z = 0f;
     };
 }
