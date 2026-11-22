@@ -12,7 +12,7 @@ int main() {
     win.setResizable(false);
 
     win.run([&]() {
-        draw.DrawRect(100,200,50,50,UI::RGB(255,0,0);
+        draw.DrawRect(100,200,50,50,UI::RGB(255,0,0));
         draw.ClearScreen(UI::RGB(0,255,0));
     });
 }
