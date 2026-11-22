@@ -33,7 +33,7 @@ void DrawComponent::SetupProjection() const
 {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(0.0, m_window.Width(), m_window.Height(), 0.0, -1.0, 1.0);
+    glOrtho(0.0, m_window.getWidth(), m_window.getHeight(), 0.0, -1.0, 1.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 }

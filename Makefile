@@ -10,7 +10,7 @@ TARGET := bin/GGEngine.exe
 OBJDIR := bin/obj
 
 CXXFLAGS := -std=c++17 -Wall -Wextra -Iinclude -Isrc -MMD -MP
-CFLAGS   := -Wall -Iinclude -MMD -MP
+CFLAGS   := -Wall -Iinclude -Iinclude/glad -MMD -MP
 LDFLAGS  := -Llib -lSDL3
 
 ifdef RELEASE
