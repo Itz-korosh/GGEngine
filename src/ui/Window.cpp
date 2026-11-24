@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "input/Keyboard.hpp"
+#include "input/Mouse.hpp"
 #include "time/Time.hpp"
 
 namespace UI {
@@ -68,7 +69,8 @@ void Window::run(const std::function<void(float)>& frame)
 
 void Window::pollEvents()
 {
-    Input::Keyboard::update();   // remember last frame's keys, before reading new events
+    Input::Keyboard::update();
+    Input::Mouse::update();
 
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
