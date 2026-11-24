@@ -1,17 +1,21 @@
-#include "Objects.hpp"
+#include "core/Collision.hpp"
 
-bool Collide2D(Objects::Object2D obj1, Objects::Object2D obj2) {
-    if (obj1.Pos.x = obj2.Pos.y) {
-        if (obj1.Pos.y = obj2.Pos.y) {return true;}
-    }
-    else {return false}
+namespace Collision {
+
+// Two boxes overlap when they overlap on every axis.
+bool Collide2D(const Objects::Object2D& a, const Objects::Object2D& b)
+{
+    bool overlapX = a.Pos.x < b.Pos.x + b.Size.x && a.Pos.x + a.Size.x > b.Pos.x;
+    bool overlapY = a.Pos.y < b.Pos.y + b.Size.y && a.Pos.y + a.Size.y > b.Pos.y;
+    return overlapX && overlapY;
 }
 
-bool Collide3D(Objects::Object3D obj1, Objects::Object3D obj2) {
-    if (obj1.Pos.x = obj2.Pos.y) {
-        if (obj1.Pos.y = obj2.Pos.y) {
-            if (obj1.Pos.z = obj2.Pos.z) {return true}
-        }
-    }
-    else {return false}
+bool Collide3D(const Objects::Object3D& a, const Objects::Object3D& b)
+{
+    bool overlapX = a.Pos.x < b.Pos.x + b.Size.x && a.Pos.x + a.Size.x > b.Pos.x;
+    bool overlapY = a.Pos.y < b.Pos.y + b.Size.y && a.Pos.y + a.Size.y > b.Pos.y;
+    bool overlapZ = a.Pos.z < b.Pos.z + b.Size.z && a.Pos.z + a.Size.z > b.Pos.z;
+    return overlapX && overlapY && overlapZ;
 }
+
+} // namespace Collision
