@@ -1,8 +1,4 @@
-#include "ui/Window.hpp"
-#include "ui/DrawComponent.hpp"
-#include "ui/ColorNode.hpp"
-#include "Math/Vector.hpp"
-#include "input/Keyboard.hpp"
+#include "GGEngine.hpp"
 
 int main() {
     UI::Window win;
