@@ -3,6 +3,8 @@
 #include <string>
 #include <functional>
 
+#include "ui/ColorNode.hpp"
+
 // Forward declaration, so this header doesn't need to include SDL.
 struct SDL_Window;
 
@@ -18,11 +20,15 @@ public:
     Window& operator=(const Window&) = delete;
 
     // ---- Game loop ----
-    void run(const std::function<void()>& frame);
+    void run(const std::function<void(float)>& frame);   // frame receives delta time (seconds)
     void pollEvents();
     void clear(float r, float g, float b, float a);
     void swapBuffers();
     bool isOpen() const { return m_open; }
+    void close() { m_open = false; }
+
+    // ---- Background (cleared automatically at the start of every frame) ----
+    void setBackground(const RGB& color);
 
     // ---- Title ----
     void setTitle(const std::string& title);
@@ -51,6 +57,7 @@ private:
     SDL_Window* m_window = nullptr;
     void* m_context = nullptr;   // the OpenGL context (SDL_GLContext)
     bool m_open = false;
+    GLRGBA m_background;         // defaults to black
 };
 
 } // namespace UI

@@ -4,6 +4,9 @@
 #include <glad/glad.h>   // GLAD v1; must come before any other OpenGL header
 #include <iostream>
 
+#include "input/Keyboard.hpp"
+#include "time/Time.hpp"
+
 namespace UI {
 
 Window::Window(const std::string& title, int width, int height)
@@ -52,17 +55,21 @@ Window::~Window()
 
 // ---- Game loop ----
 
-void Window::run(const std::function<void()>& frame)
+void Window::run(const std::function<void(float)>& frame)
 {
     while (m_open) {
+        Timing::Time::update();   // measure this frame
         pollEvents();
-        frame();          // the user's code runs here, once per frame
+        clear(m_background.r, m_background.g, m_background.b, m_background.a);
+        frame(Timing::Time::getDelta());
         swapBuffers();
     }
 }
 
 void Window::pollEvents()
 {
+    Input::Keyboard::update();   // remember last frame's keys, before reading new events
+
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
@@ -87,6 +94,14 @@ void Window::clear(float r, float g, float b, float a)
 void Window::swapBuffers()
 {
     if (m_window) SDL_GL_SwapWindow(m_window);
+}
+
+// ---- Background ----
+
+void Window::setBackground(const RGB& color)
+{
+    GLRGB c = color.ToGL();
+    m_background = GLRGBA{ c.r, c.g, c.b, 1.0f };
 }
 
 // ---- Title ----
