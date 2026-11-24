@@ -11,8 +11,11 @@ int main() {
     win.center();
     win.setResizable(false);
 
+    Vector::Vec2D pos1;
+    pos1.x = 100;
+    pos1.y = 200;
     win.run([&]() {
-        draw.DrawRect(100,200,50,50,UI::RGB(255,0,0));
         draw.ClearScreen(UI::RGB(0,255,0));
+        draw.DrawRect(pos1,50,100,UI::RGB(255,0,0));
     });
 }
