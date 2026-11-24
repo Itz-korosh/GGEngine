@@ -1,4 +1,5 @@
 #include <string>
+#include <vector>
 
 #include "ui/Window.hpp"
 #include "ui/DrawComponent.hpp"
@@ -6,109 +7,154 @@
 #include "Math/Vector.hpp"
 #include "Math/Random.hpp"
 #include "input/Keyboard.hpp"
-#include "input/Mouse.hpp"
-#include "time/Time.hpp"
 #include "time/Timer.hpp"
+#include "core/Collision.hpp"
 
-int main() {
-    UI::Window win("Mouse Test", 800, 600);
+using Vector::Vec2D;
+using UI::RGB;
+using Input::Keyboard;
+
+// The board is a grid of 40 x 30 cells, 20 pixels each = 800 x 600.
+const int CELL = 20;
+const int COLS = 40;
+const int ROWS = 30;
+
+struct Game {
+    std::vector<Vec2D> snake;   // grid cells, snake[0] is the head
+    Vec2D dir{1.0f, 0.0f};      // direction used for the last step
+    Vec2D nextDir{1.0f, 0.0f};  // direction the player asked for
+    Vec2D food;
+    int score = 0;
+    bool gameOver = false;
+};
+
+// A grid cell as an engine object (position and size in pixels), for collision.
+Objects::Object2D cellObject(const Vec2D& cell)
+{
+    return Objects::Object2D(RGB(0, 0, 0),
+                             Vec2D(cell.x * CELL, cell.y * CELL),
+                             Vec2D(CELL, CELL));
+}
+
+void drawCell(UI::DrawComponent& draw, const Vec2D& cell, const RGB& color)
+{
+    // 1 pixel gap around each cell makes the grid visible.
+    draw.DrawRect(Vec2D(cell.x * CELL + 1, cell.y * CELL + 1), CELL - 2, CELL - 2, color);
+}
+
+void placeFood(Game& g)
+{
+    if ((int)g.snake.size() >= COLS * ROWS) return;   // board is full, nothing to place
+
+    bool onSnake;
+    do {
+        g.food = Vec2D((float)Math::Random::nextInt(0, COLS - 1),
+                       (float)Math::Random::nextInt(0, ROWS - 1));
+        onSnake = false;
+        for (const Vec2D& part : g.snake)
+            if (part == g.food) onSnake = true;
+    } while (onSnake);
+}
+
+void reset(Game& g)
+{
+    g.snake = { Vec2D(20.0f, 15.0f), Vec2D(19.0f, 15.0f), Vec2D(18.0f, 15.0f) };
+    g.dir = Vec2D(1.0f, 0.0f);
+    g.nextDir = g.dir;
+    g.score = 0;
+    g.gameOver = false;
+    placeFood(g);
+}
+
+// Moves the snake one cell.
+void step(Game& g)
+{
+    g.dir = g.nextDir;
+    Vec2D newHead = g.snake[0] + g.dir;
+
+    // Hit a wall?
+    if (newHead.x < 0 || newHead.x >= COLS || newHead.y < 0 || newHead.y >= ROWS) {
+        g.gameOver = true;
+        return;
+    }
+
+    Objects::Object2D head = cellObject(newHead);
+    bool ate = Collision::Collide2D(head, cellObject(g.food));
+
+    // Hit itself? The tail moves away this step, so it doesn't count (unless we just ate).
+    int checkCount = (int)g.snake.size() - (ate ? 0 : 1);
+    for (int i = 0; i < checkCount; ++i) {
+        if (Collision::Collide2D(head, cellObject(g.snake[i]))) {
+            g.gameOver = true;
+            return;
+        }
+    }
+
+    g.snake.insert(g.snake.begin(), newHead);   // grow at the head
+    if (ate) {
+        g.score++;
+        placeFood(g);                           // keep the tail: the snake got longer
+    } else {
+        g.snake.pop_back();                     // drop the tail: the snake just moved
+    }
+}
+
+int main()
+{
+    UI::Window win("Snake", COLS * CELL, ROWS * CELL);
     UI::DrawComponent draw(win);
-    Input::Mouse mouse;
     Input::Keyboard kb;
 
-    win.center();
     win.setResizable(false);
-    win.setBackground(UI::RGB(30, 30, 40));
+    win.center();
+    win.setBackground(RGB(20, 24, 30));
+    win.setTitle("Snake | Score: 0");
 
-    // The draggable box
-    Vector::Vec2D boxPos{340.0f, 260.0f};
-    Vector::Vec2D grabOffset{0.0f, 0.0f};
-    UI::RGB boxColor(255, 128, 0);
-    float scale = 1.0f;
-    bool dragging = false;
-    bool cursorVisible = true;
+    Game game;
+    reset(game);
 
-    Timing::Timer flash(0.2f);          // white flash when you let go of the box
-    Timing::Timer titleTimer(0.1f);     // updates the title text 10x per second
-    titleTimer.start();
+    Timing::Timer stepTimer(0.14f);   // the snake moves once per timer cycle
+    stepTimer.start();
 
     win.run([&](float) {
-        Vector::Vec2D m = mouse.getPosition();
-        float w = 120.0f * scale;
-        float h = 80.0f * scale;
+        // ---- Input ----
+        // A turn is only allowed if it isn't a reversal of the current direction.
+        if ((kb.isKeyDown(Keyboard::Up)    || kb.isKeyDown(Keyboard::W)) && game.dir.y == 0) game.nextDir = Vec2D(0.0f, -1.0f);
+        if ((kb.isKeyDown(Keyboard::Down)  || kb.isKeyDown(Keyboard::S)) && game.dir.y == 0) game.nextDir = Vec2D(0.0f, 1.0f);
+        if ((kb.isKeyDown(Keyboard::Left)  || kb.isKeyDown(Keyboard::A)) && game.dir.x == 0) game.nextDir = Vec2D(-1.0f, 0.0f);
+        if ((kb.isKeyDown(Keyboard::Right) || kb.isKeyDown(Keyboard::D)) && game.dir.x == 0) game.nextDir = Vec2D(1.0f, 0.0f);
 
-        bool overBox = m.x >= boxPos.x && m.x <= boxPos.x + w &&
-                       m.y >= boxPos.y && m.y <= boxPos.y + h;
+        if (kb.isKeyPressed(Keyboard::Escape)) win.close();
 
-        // Left button: drag the box
-        if (mouse.isButtonPressed(Input::Mouse::Left) && overBox) {
-            dragging = true;
-            grabOffset.x = m.x - boxPos.x;
-            grabOffset.y = m.y - boxPos.y;
-        }
-        if (dragging) {
-            boxPos.x = m.x - grabOffset.x;
-            boxPos.y = m.y - grabOffset.y;
-        }
-        if (mouse.isButtonReleased(Input::Mouse::Left)) {
-            if (dragging) flash.start();
-            dragging = false;
+        if (game.gameOver && (kb.isKeyPressed(Keyboard::Space) || kb.isKeyPressed(Keyboard::Enter))) {
+            reset(game);
+            stepTimer.setDuration(0.14f);
+            stepTimer.start();
+            win.setTitle("Snake | Score: 0");
         }
 
-        // Right button: random color
-        if (mouse.isButtonPressed(Input::Mouse::Right)) {
-            boxColor = UI::RGB(Math::Random::nextInt(0, 255),
-                               Math::Random::nextInt(0, 255),
-                               Math::Random::nextInt(0, 255));
-        }
+        // ---- Update ----
+        if (!game.gameOver && stepTimer.isFinished()) {
+            step(game);
 
-        // Middle button: reset everything
-        if (mouse.isButtonPressed(Input::Mouse::Middle)) {
-            boxPos = Vector::Vec2D{340.0f, 260.0f};
-            boxColor = UI::RGB(255, 128, 0);
-            scale = 1.0f;
-        }
+            if (game.gameOver)
+                win.setTitle("GAME OVER | Score: " + std::to_string(game.score) + " | Space to restart");
+            else
+                win.setTitle("Snake | Score: " + std::to_string(game.score));
 
-        // Wheel: resize
-        scale += mouse.getScrollY() * 0.1f;
-        if (scale < 0.3f) scale = 0.3f;
-        if (scale > 4.0f) scale = 4.0f;
-
-        // H: hide or show the system cursor, Esc: quit
-        if (kb.isKeyPressed(Input::Keyboard::H)) {
-            cursorVisible = !cursorVisible;
-            mouse.setCursorVisible(cursorVisible);
+            // Faster as the score grows (but never faster than 0.05 s per step).
+            float interval = 0.14f - 0.004f * game.score;
+            stepTimer.setDuration(interval > 0.05f ? interval : 0.05f);
+            stepTimer.start();
         }
-        if (kb.isKeyPressed(Input::Keyboard::Escape)) win.close();
 
         // ---- Drawing ----
-        bool flashing = flash.isRunning() && !flash.isFinished();
+        drawCell(draw, game.food, RGB(230, 60, 60));
 
-        if (overBox)   // white outline while hovering
-            draw.DrawRect(Vector::Vec2D{boxPos.x - 3.0f, boxPos.y - 3.0f}, w + 6.0f, h + 6.0f, UI::RGB(255, 255, 255));
-
-        draw.DrawRect(boxPos, w, h, flashing ? UI::RGB(255, 255, 255) : boxColor);
-
-        // Button indicators (bottom left): Left, Middle, Right
-        draw.DrawRect(Vector::Vec2D{20.0f, 550.0f}, 30, 30,
-                      mouse.isButtonDown(Input::Mouse::Left)   ? UI::RGB(255, 80, 80)  : UI::RGB(70, 70, 80));
-        draw.DrawRect(Vector::Vec2D{60.0f, 550.0f}, 30, 30,
-                      mouse.isButtonDown(Input::Mouse::Middle) ? UI::RGB(80, 255, 80)  : UI::RGB(70, 70, 80));
-        draw.DrawRect(Vector::Vec2D{100.0f, 550.0f}, 30, 30,
-                      mouse.isButtonDown(Input::Mouse::Right)  ? UI::RGB(80, 160, 255) : UI::RGB(70, 70, 80));
-
-        // Our own cursor dot (visible even when the system cursor is hidden)
-        draw.DrawRect(Vector::Vec2D{m.x - 4.0f, m.y - 4.0f}, 8, 8, UI::RGB(255, 255, 255));
-
-        // Live info in the title bar
-        if (titleTimer.isFinished()) {
-            win.setTitle("x:" + std::to_string((int)m.x) +
-                         " y:" + std::to_string((int)m.y) +
-                         " | dx:" + std::to_string((int)mouse.getDeltaX()) +
-                         " dy:" + std::to_string((int)mouse.getDeltaY()) +
-                         " | scale:" + std::to_string((int)(scale * 100)) + "%" +
-                         " | FPS:" + std::to_string((int)Timing::Time::getFps()));
-            titleTimer.start();
+        for (size_t i = 0; i < game.snake.size(); ++i) {
+            RGB color = (i == 0) ? RGB(120, 255, 120) : RGB(40, 200, 60);
+            if (game.gameOver) color = (i == 0) ? RGB(200, 200, 200) : RGB(120, 120, 120);
+            drawCell(draw, game.snake[i], color);
         }
     });
 }
